@@ -28,7 +28,11 @@ const bookingSchema = new Schema(
     hostId: {
       type: Schema.Types.ObjectId,
       ref: "users", 
-    }
+    },cancellationReason: {
+      type: String,
+      default: "",
+    },
+    
   },
   {
     timestamps: true,

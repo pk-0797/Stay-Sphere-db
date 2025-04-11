@@ -2,7 +2,7 @@ const bookingModel = require("../models/BookingModel");
 const propertyModel = require("../models/PropertyModel");
 const Notification = require("../models/NotificationModel");
 const { sendingMail } = require("../utils/MailUtil");
-const io = global.io; // Ensure we use the global io instance
+const io = global.io; 
 
 const confirmBooking = async (req, res) => {
   try {
@@ -75,29 +75,37 @@ Stay Sphere Team
 const cancelBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const { reason } = req.body;
 
     const booking = await bookingModel
-      .findByIdAndUpdate(bookingId, { status: "Cancelled" }, { new: true })
-      .populate("guestId propertyId"); // Populates guest and property data
+      .findByIdAndUpdate(
+        bookingId,
+        {
+          status: "Cancelled",
+          cancellationReason: reason || "Not specified",
+        },
+        { new: true }
+      )
+      .populate("guestId propertyId");
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Create notification for the user
+    const notificationMessage = `Your booking was cancelled by the host. Reason: ${
+      reason || "No reason provided"
+    }`;
+
     const notification = new Notification({
       userId: booking.guestId._id,
-      message: "Your booking has been canceled by the host.",
+      message: notificationMessage,
     });
-
     await notification.save();
 
-    // Emit real-time notification
     io.to(booking.guestId._id.toString()).emit("newNotification", {
-      message: "Your booking has been canceled by the host.",
+      message: notificationMessage,
     });
 
-    // Compose detailed email
     const emailContent = `
 Hi ${booking.guestId.fullName},
 
@@ -117,15 +125,12 @@ Best regards,
 Stay Sphere Team
     `;
 
-    // Send email with try/catch for debugging
     try {
-      console.log("Sending email to:", booking.guestId.email);
       await sendingMail(
         booking.guestId.email,
         "Booking Cancelled",
         emailContent
       );
-      console.log("Email sent successfully.");
     } catch (emailErr) {
       console.error("Failed to send email:", emailErr);
     }
