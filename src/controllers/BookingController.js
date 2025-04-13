@@ -385,6 +385,33 @@ Thank you for booking with StaySphere!
   }
 };
 
+const getTotalRevenueForAdmin = async (req, res) => {
+  try {
+    // Aggregate total revenue from confirmed bookings
+    const result = await bookingModel.aggregate([
+      { $match: { status: "Confirmed" } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$totalPrice" },
+        },
+      },
+    ]);
+
+    const totalRevenue = result[0]?.totalRevenue || 0;
+
+    res.status(200).json({
+      message: "Total revenue fetched successfully.",
+      totalRevenue,
+    });
+  } catch (err) {
+    console.error("❌ Failed to fetch total revenue:", err.message);
+    res
+      .status(500)
+      .json({ message: "Something went wrong while fetching revenue." });
+  }
+};
+
 module.exports = {
   addBooking,
   getAllBooking,
@@ -396,4 +423,5 @@ module.exports = {
   getBookingsByHostId,
   getHostByPropertyId,
   updateBookingByHost,
+  getTotalRevenueForAdmin
 };

@@ -9,7 +9,7 @@ routes.post("/addbookingwithpropertyid/:propertyId", bookingController.addBookin
 routes.put("/confirm/:bookingId", bookingController.confirmBooking);
 routes.put("/cancel/:bookingId", bookingController.cancelBooking);
 routes.get("/host/:hostId", bookingController.getBookingsByHostId);
-
+routes.get("/total-revenue", bookingController.getTotalRevenueForAdmin);
 
 routes.get('/getbookingsbyuserid/:userId', bookingController.getAllBookingsByUserId);
 routes.get("/getpropertyby/:bookingId", bookingController.getPropertyByBookingId);
