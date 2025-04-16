@@ -32,19 +32,34 @@ exports.sendMessage = async (req, res) => {
   }
 };
 exports.getAllMessages = async (req, res) => {
-  try {
-    // ✅ Fetch ALL messages from the database, sorted by newest first
-    const messages = await Message.find().sort({ createdAt: -1 });
+  // try {
+  //   // ✅ Fetch ALL messages from the database, sorted by newest first
+  //   const messages = await Message.find().sort({ createdAt: -1 });
 
-    if (!messages || messages.length === 0) {
-      return res.status(200).json({ data: [] }); // ✅ Always return an array
+  //   if (!messages || messages.length === 0) {
+  //     return res.status(200).json({ data: [] }); // ✅ Always return an array
+  //   }
+
+  //   res.status(200).json({ data: messages });
+  // } catch (error) {
+  //   console.error("Error fetching all messages:", error);
+  //   res.status(500).json({ message: "Internal server error", error });
+  // }
+  const hostId = req.query.hostId;
+
+    try {
+        let messages;
+        if (hostId) {
+            messages = await Message.find({ hostId });
+        } else {
+            // Admin can see all messages (no filter applied)
+            messages = await Message.find();
+        }
+        res.json({ data: messages });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error fetching messages' });
     }
-
-    res.status(200).json({ data: messages });
-  } catch (error) {
-    console.error("Error fetching all messages:", error);
-    res.status(500).json({ message: "Internal server error", error });
-  }
 };
 
 exports.getMessagesForHost = async (req, res) => {
