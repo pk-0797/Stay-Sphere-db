@@ -144,27 +144,106 @@ Stay Sphere Team
     res.status(500).json({ message: err.message });
   }
 };
+// 1st
+// const addBooking = async (req, res) => {
+//   try {
+//     const { guestId, propertyId, checkIn, checkOut, totalPrice } = req.body;
 
+//     // Prevent duplicate bookings for the same property and user
+//     const existingBooking = await bookingModel.findOne({
+//       guestId,
+//       propertyId,
+//       checkIn,
+//       checkOut,
+//       status: "Pending", // Avoid duplicate pending requests
+//     });
+
+//     if (existingBooking) {
+//       return res
+//         .status(400)
+//         .json({ message: "Booking request already sent for these dates!" });
+//     }
+
+//     // Fetch property to get host ID
+//     const property = await propertyModel.findById(propertyId);
+//     if (!property) {
+//       return res.status(404).json({ message: "Property not found" });
+//     }
+
+//     const hostId = property.userId;
+
+//     // Create new booking request
+//     const newBooking = await bookingModel.create({
+//       guestId,
+//       propertyId,
+//       hostId,
+//       checkIn,
+//       checkOut,
+//       totalPrice,
+//       status: "Pending",
+//     });
+
+//     res
+//       .status(201)
+//       .json({ message: "Booking request sent to host.", data: newBooking });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+//2nd
+// const addBooking = async (req, res) => {
+//   try {
+//     const { guestId, propertyId, checkIn, checkOut, totalPrice } = req.body;
+
+//     // Overlap check: block any booking with status other than 'Cancelled'
+//     const overlappingBooking = await bookingModel.findOne({
+//       propertyId,
+//       status: { $ne: "Cancelled" },
+//       $or: [
+//         { checkIn: { $lte: new Date(checkOut) }, checkOut: { $gte: new Date(checkIn) } }
+//       ]
+//     });
+
+//     if (overlappingBooking) {
+//       return res.status(400).json({
+//         message: `Property is already booked or requested from ${new Date(overlappingBooking.checkIn).toLocaleDateString()} to ${new Date(overlappingBooking.checkOut).toLocaleDateString()}.`
+//       });
+//     }
+
+//     const property = await propertyModel.findById(propertyId);
+//     if (!property) {
+//       return res.status(404).json({ message: "Property not found" });
+//     }
+
+//     const hostId = property.userId;
+
+//     const newBooking = await bookingModel.create({
+//       guestId,
+//       propertyId,
+//       hostId,
+//       checkIn,
+//       checkOut,
+//       totalPrice,
+//       status: "Pending",
+//     });
+
+//     res.status(201).json({
+//       message: "Booking request sent to host.",
+//       data: newBooking,
+//     });
+
+//   } catch (err) {
+//     console.error("Error in addBooking:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+//hotels
 const addBooking = async (req, res) => {
   try {
     const { guestId, propertyId, checkIn, checkOut, totalPrice } = req.body;
 
-    // Prevent duplicate bookings for the same property and user
-    const existingBooking = await bookingModel.findOne({
-      guestId,
-      propertyId,
-      checkIn,
-      checkOut,
-      status: "Pending", // Avoid duplicate pending requests
-    });
-
-    if (existingBooking) {
-      return res
-        .status(400)
-        .json({ message: "Booking request already sent for these dates!" });
-    }
-
-    // Fetch property to get host ID
+    // Get the property
     const property = await propertyModel.findById(propertyId);
     if (!property) {
       return res.status(404).json({ message: "Property not found" });
@@ -172,7 +251,47 @@ const addBooking = async (req, res) => {
 
     const hostId = property.userId;
 
-    // Create new booking request
+    const isHotel = property.propertyType?.toLowerCase() === "hotel"; // ✅ ensure case-insensitive
+
+    if (isHotel) {
+      // 🏨 Logic for hotels: allow multiple bookings up to availableRooms
+      const overlappingBookingsCount = await bookingModel.countDocuments({
+        propertyId,
+        status: { $in: ["Pending", "Confirmed"] },
+        $or: [
+          {
+            checkIn: { $lte: new Date(checkOut) },
+            checkOut: { $gte: new Date(checkIn) },
+          },
+        ],
+      });
+
+      if (overlappingBookingsCount >= property.availableRooms) {
+        return res.status(400).json({
+          message: `All ${property.availableRooms} room(s) are already booked for the selected dates.`,
+        });
+      }
+    } else {
+      // 🏠 Logic for non-hotels: block all overlaps
+      const overlappingBooking = await bookingModel.findOne({
+        propertyId,
+        status: { $in: ["Pending", "Confirmed"] },
+        $or: [
+          {
+            checkIn: { $lte: new Date(checkOut) },
+            checkOut: { $gte: new Date(checkIn) },
+          },
+        ],
+      });
+
+      if (overlappingBooking) {
+        return res.status(400).json({
+          message: `This property is already booked for the selected dates.`,
+        });
+      }
+    }
+
+    // ✅ Create the booking
     const newBooking = await bookingModel.create({
       guestId,
       propertyId,
@@ -183,13 +302,17 @@ const addBooking = async (req, res) => {
       status: "Pending",
     });
 
-    res
-      .status(201)
-      .json({ message: "Booking request sent to host.", data: newBooking });
+    res.status(201).json({
+      message: "Booking request sent to host.",
+      data: newBooking,
+    });
+
   } catch (err) {
+    console.error("Error in addBooking:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 const getBookingsByHostId = async (req, res) => {
   try {
@@ -412,6 +535,62 @@ const getTotalRevenueForAdmin = async (req, res) => {
   }
 };
 
+// 1st
+// const checkBookingAvailability = async (req, res) => {
+//   try {
+//     const { propertyId, checkIn, checkOut } = req.body;
+
+//     const overlapping = await bookingModel.findOne({
+//       propertyId,
+//       status: { $ne: "Cancelled" },
+//       $or: [
+//         { checkIn: { $lte: new Date(checkOut) }, checkOut: { $gte: new Date(checkIn) } }
+//       ]
+//     });
+
+//     if (overlapping) {
+//       return res.status(200).json({
+//         available: false,
+//         message: `Property is already booked from ${new Date(overlapping.checkIn).toLocaleDateString()} to ${new Date(overlapping.checkOut).toLocaleDateString()}.`
+//       });
+//     }
+
+//     res.status(200).json({ available: true });
+
+//   } catch (err) {
+//     console.error("Error checking availability:", err.message);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+const checkBookingAvailability = async (req, res) => {
+  try {
+    const { propertyId, checkIn, checkOut } = req.body;
+
+    const overlapping = await bookingModel.find({
+      propertyId,
+      status: { $ne: "Cancelled" },
+      $or: [
+        { checkIn: { $lte: new Date(checkOut) }, checkOut: { $gte: new Date(checkIn) } }
+      ]
+    });
+
+    const count = overlapping.length;
+
+    const available = count === 0;
+
+    res.status(200).json({
+      available,
+      overlappingCount: count, // 🔥 send this
+      message: !available ? `Property is already booked from ${new Date(overlapping[0].checkIn).toLocaleDateString()} to ${new Date(overlapping[0].checkOut).toLocaleDateString()}.` : null
+    });
+  } catch (err) {
+    console.error("Error checking availability:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   addBooking,
   getAllBooking,
@@ -423,5 +602,6 @@ module.exports = {
   getBookingsByHostId,
   getHostByPropertyId,
   updateBookingByHost,
-  getTotalRevenueForAdmin
+  getTotalRevenueForAdmin,
+  checkBookingAvailability
 };

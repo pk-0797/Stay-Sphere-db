@@ -15,5 +15,6 @@ routes.get('/getbookingsbyuserid/:userId', bookingController.getAllBookingsByUse
 routes.get("/getpropertyby/:bookingId", bookingController.getPropertyByBookingId);
 routes.get("/gethostbypropertyid/:propertyId", bookingController.getHostByPropertyId);
 routes.put("/update/:bookingId", bookingController.updateBookingByHost);
+routes.post('/check-availability', bookingController.checkBookingAvailability);
 
 module.exports = routes;

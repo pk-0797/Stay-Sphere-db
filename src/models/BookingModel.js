@@ -12,10 +12,10 @@ const bookingSchema = new Schema(
       ref: "Property",
     },
     checkIn: {
-      type: String,
+      type: Date,
     },
     checkOut: {
-      type: String,
+      type: Date,
     },
     totalPrice: {
       type: Number,

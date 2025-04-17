@@ -46,6 +46,7 @@ const propertySchema = new Schema(
     },
     availableRooms:{
       type:Number,
+      required: true,
     },
     roomType :{
       type: String,
